@@ -99,8 +99,8 @@ class ChoiceStatusDialog(simpledialog.Dialog):
           one_page_labels=[]
           current_page_line_num=0
      else:
-        self.__status_labels.append(one_page_labels)
-        self.__all_page_num += 1
+        if len(one_page_labels) != 0:
+          self.__status_labels.append(one_page_labels)
      
      self.__current_page_num=0
      
@@ -162,7 +162,7 @@ class ChoiceStatusDialog(simpledialog.Dialog):
      for one_label in self.__status_labels[page_num]:
        one_label.place(x=16,y=current_height)
        label_line_num=one_label["text"].count("\n")+1
-       height_diff=16*label_line_num
+       height_diff=24*label_line_num
        current_height += height_diff
        
    def page_label_forget(self,page_num:int=None):
