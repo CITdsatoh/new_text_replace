@@ -34,12 +34,15 @@ class IOFileChoiceControler(tk.Frame):
     self.__all_reset_choice_btn.place(x=256,y=128)
     self.__all_reset_choice_btn.bind("<Button-1>",self.all_reset_file_choice)
     
+    
   
   def file_choice(self,event=None):
     setting_dialog=FilePathSettingDialog(self.__master,tuple(self.__input_information))
     setting_result=setting_dialog.result
     if setting_result is not None:
       self.__input_information=setting_result
+      #設定内容に変化があったことを伝える
+      self.__master.any_information_changed()
   
   #実際に置換する直前に、入力情報をもとにどのファイルに書き込むかの情報オブジェクトをメインウィンドウに返す
   def get_file_io_objs(self):
@@ -50,7 +53,7 @@ class IOFileChoiceControler(tk.Frame):
        new_file_manager_obj=one_input_information.get_file_io_manage_obj()
        if new_file_manager_obj is not None:
          file_managers.append(new_file_manager_obj)
-     
+         
      return file_managers
   
   
@@ -76,6 +79,8 @@ class IOFileChoiceControler(tk.Frame):
           return
     self.__input_information=[None for i in range(30)]
     messagebox.showinfo("削除完了","今まで登録・入力したファイル情報がすべて削除されました")
+    
+    
     
 
 class IOFileChoiceStatusDialog(simpledialog.Dialog):
