@@ -42,13 +42,15 @@ class ReplaceChoiceControler(tk.Frame):
    self.__only_once_mode_explain_dialog_btn=tk.Button(self,text="詳しく",font=("times",11))
    self.__only_once_mode_explain_dialog_btn.place(x=512,y=200)
    self.__only_once_mode_explain_dialog_btn.bind("<Button-1>",self.disp_only_once_mode_explain_dialog)
- 
+   
  
   def replace_text_choice(self,event=None):
     setting_dialog=ReplaceTextInputDialog(self.__master,tuple(self.__all_inputs_data))
     setting_result=setting_dialog.result
     if setting_result is not None:
       self.__all_inputs_data=setting_result
+      #メインウィンドウのほうに、変化が起きたことを伝える
+      self.__master.any_information_changed()
   
   #置換直前に、入力データから実際に置換するための情報が入っているオブジェクト群を得る
   def get_replace_information_objs(self):
@@ -59,8 +61,9 @@ class ReplaceChoiceControler(tk.Frame):
        replace_information_obj=one_input_data.get_replace_information_obj()
        if replace_information is not None:
          replacers_information.append(replace_information_obj)
-    
+   
     return replacers_information
+  
   
   #同時置換モードが有効かどうか(=これに応じて、メインウィンドウで、同時置換用の処理と通常の処理を分岐する)
   def is_only_once_replace(self):
@@ -92,7 +95,8 @@ class ReplaceChoiceControler(tk.Frame):
     self.__all_inputs_data=[None for i in range(20)]
     messagebox.showinfo("削除完了","今まで登録・入力した置換テキスト情報がすべて削除されました")
     self.__is_only_once_replace_widget_var.set(False)
-
+  
+  
 
 
 class ReplaceTextChoiceStatusDialog(simpledialog.Dialog):
