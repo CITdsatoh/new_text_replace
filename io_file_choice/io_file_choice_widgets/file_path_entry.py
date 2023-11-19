@@ -188,7 +188,7 @@ class FileInformationRepository:
      src_str=f"テキストを置換したいファイル:{self.__src_file_path_str}"
      dst_str=f"置換結果を書き込むファイル:{self.__dst_file_path_str}"
      if len(self.__dst_file_path_str) == 0:
-       dst_str=f"置換結果を書き込むファイル:{self.__src_file_path_str}(上書き)"
+       dst_str=f"置換結果を書き込むファイル:未入力(上書き)"
      
      return f"{src_str}\n{dst_str}"
    
