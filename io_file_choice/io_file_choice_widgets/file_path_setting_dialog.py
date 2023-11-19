@@ -37,24 +37,41 @@ class FilePathSettingDialog(simpledialog.Dialog):
        self.__entry_corners.append(one_corner)
      
      
-     self.__page_back_btn=tk.Button(self,text="前のページに戻る",font=("times",11))
+     
+     self.__page_operation_corner=tk.Frame(self,width=1134,height=32)
+     
+     self.__page_back_btn=tk.Button(self.__page_operation_corner,text="前のページに戻る",font=("times",11))
      self.__page_back_btn.bind("<Button-1>",self.page_back)
      
-     self.__page_advance_btn=tk.Button(self,text="次のページに進む",font=("times",11))
-     self.__page_advance_btn.place(x=720,y=624)
+     self.__page_advance_btn=tk.Button(self.__page_operation_corner,text="次のページに進む",font=("times",11))
+     self.__page_advance_btn.place(x=720,y=0)
+
      self.__page_advance_btn.bind("<Button-1>",self.page_advance)
      
+     self.__page_jump_corner=tk.Frame(self.__page_operation_corner,width=416,height=32)
      
-     self.__current_page_entry=tk.Entry(self,width=4,font=("times",11))
+     self.__current_page_entry=tk.Entry(self.__page_jump_corner,width=4,font=("times",11))
      self.__current_page_entry.insert(0,"1")
-     self.__current_page_entry.place(x=320,y=624)
+     self.__current_page_entry.bind("<Leave>",self.page_operation_focus_remove)
+     self.__current_page_entry.place(x=0,y=0)
      
-     self.__current_page_label=tk.Label(self,text=f"ページ(その1-その5)/6ページ",font=("times",11))
-     self.__current_page_label.place(x=368,y=624)
+     self.__current_page_label_former=tk.Label(self.__page_jump_corner,text=f"ページ(その1-その5)",font=("times",11))
+     self.__current_page_label_former.place(x=48,y=0)
      
-     self.__page_jump_btn=tk.Button(self,text="ページへ移動",font=("times",11))
-     self.__page_jump_btn.place(x=600,y=624)
+     self.__page_jump_btn=tk.Button(self.__page_jump_corner,text="ページへ移動",font=("times",11))
+     self.__page_jump_btn.place(x=224,y=0)
      self.__page_jump_btn.bind("<Button-1>",self.page_jump)
+     
+     self.__current_page_label_latter=tk.Label(self.__page_jump_corner,text="/6ページ",font=("times",11))
+     self.__current_page_label_latter.place(x=352,y=0)
+     
+     self.__page_jump_corner.bind("<Enter>",self.page_operation_focus_remove)
+     self.__page_jump_corner.bind("<Leave>",self.page_operation_focus_set)
+     self.__page_jump_corner.place(x=256,y=0)
+     
+     self.__page_operation_corner.bind("<Enter>",self.main_focus_remove)
+     self.__page_operation_corner.bind("<Leave>",self.main_focus_set)
+     self.__page_operation_corner.place(x=0,y=624)
      
      self.__multiple_choice_btn=tk.Button(self,text="テキスト置換ファイルを複数一括で設定",font=("times",11))
      self.__multiple_choice_btn.place(x=128,y=656)
@@ -88,7 +105,7 @@ class FilePathSettingDialog(simpledialog.Dialog):
      self.__current_disp_page_num -= 1
      self.__current_page_entry.delete(0,tk.END)
      self.__current_page_entry.insert(0,f"{self.__current_disp_page_num+1}")
-     self.__current_page_label["text"]=f"ページ(その{self.__current_disp_page_num*5+1}-その{(self.__current_disp_page_num+1)*5})/6ページ"
+     self.__current_page_label_former["text"]=f"ページ(その{self.__current_disp_page_num*5+1}-その{(self.__current_disp_page_num+1)*5})"
      self.page_place()
      
      #最初のページに戻ってきたとき
@@ -97,7 +114,8 @@ class FilePathSettingDialog(simpledialog.Dialog):
      
      #最後のページから戻ってきたとき
      if self.__current_disp_page_num == 4:
-       self.__page_advance_btn.place(x=720,y=624)
+       self.__page_advance_btn.place(x=720,y=0)
+
       
    
    def page_advance(self,event=None):
@@ -108,11 +126,11 @@ class FilePathSettingDialog(simpledialog.Dialog):
      self.__current_disp_page_num += 1
      self.__current_page_entry.delete(0,tk.END)
      self.__current_page_entry.insert(0,f"{self.__current_disp_page_num+1}")
-     self.__current_page_label["text"]=f"ページ(その{self.__current_disp_page_num*5+1}-その{(self.__current_disp_page_num+1)*5})/6ページ"
+     self.__current_page_label_former["text"]=f"ページ(その{self.__current_disp_page_num*5+1}-その{(self.__current_disp_page_num+1)*5})"
      self.page_place()
      #最初のページから2ページ目に進んだとき
      if self.__current_disp_page_num == 1:
-       self.__page_back_btn.place(x=96,y=624)
+       self.__page_back_btn.place(x=64,y=0)
      
      #最後のページに進んだとき
      if self.__current_disp_page_num == 5:
@@ -141,10 +159,54 @@ class FilePathSettingDialog(simpledialog.Dialog):
      self.page_forget()
      self.page_place(jump_page_num)
      self.change_back_advance_btn_disp(self.__current_disp_page_num,jump_page_num)
-     self.__current_page_label["text"]=f"ページ(その{jump_page_num*5+1}-その{(jump_page_num+1)*5})/6ページ"
+     self.__current_page_label_former["text"]=f"ページ(その{jump_page_num*5+1}-その{(jump_page_num+1)*5})"
      self.__current_disp_page_num=jump_page_num
      
    
+   #メインウィンドウから、ページ操作コーナー(前ページへ戻るボタンとかがあるところ)に入ったとき
+   #Enterキーが押されたときの処理を、「登録完了」から、「次のページに進む」に役割を変える
+   def main_focus_remove(self,event=None):
+     def dummy(event=None):
+       pass
+     
+     self.__page_operation_corner.focus_set()
+     self.bind("<Escape>",dummy)
+     self.bind("<Return>",dummy)
+     self.__page_operation_corner.bind("<Return>",self.page_advance)
+     self.__page_operation_corner.bind("<BackSpace>",self.page_back)
+   
+   #逆にページ操作コーナーから、元のメインウィンドウに戻ってきたとき
+   def main_focus_set(self,event=None):
+     def dummy(event=None):
+        pass
+        
+     self.focus_set()
+     self.bind("<Escape>",self.cancel)
+     self.bind("<Return>",self.ok)
+     self.__page_operation_corner.bind("<Return>",dummy)
+     self.__page_operation_corner.bind("<BackSpace>",dummy)
+  
+   def page_operation_focus_remove(self,event=None):
+     def dummy(event=None):
+       pass
+     
+     self.__page_jump_corner.focus_set()
+     self.__page_operation_corner.bind("<Return>",dummy)
+     self.__page_operation_corner.bind("<BackSpace>",dummy)
+     self.__page_jump_corner.bind("<Return>",self.page_jump)
+     self.__current_page_entry.bind("<Return>",self.page_jump)
+  
+   def page_operation_focus_set(self,event=None):
+     def dummy(event=None):
+       pass
+     
+     self.__page_operation_corner.focus_set()
+     self.__page_jump_corner.bind("<Return>",dummy)
+     self.__current_page_entry.bind("<Return>",dummy)
+     self.__page_operation_corner.bind("<Return>",self.page_advance)
+     self.__page_operation_corner.bind("<BackSpace>",self.page_back)
+     
+    
    def cancel(self,event=None):
      if self.result is None:
        is_cancel_ok=messagebox.askyesno("本当に閉じますか?","本当にダイアログを閉じてしまってもよろしいですか?(ここまで選択・入力したファイル情報は保存されず、ダイアログを開く前の状態に戻ります)")
@@ -153,7 +215,7 @@ class FilePathSettingDialog(simpledialog.Dialog):
      super().cancel()
    
    def validate(self):
-     if self.count_margin_entries_num() == 0:
+     if self.count_margin_entries_num() == 30:
         messagebox.showerror("ファイル選択エラー","ファイル選択が1箇所もなされていません。最低限、1か所以上、置換したいファイルを選択するようにしてください")
         return False
      
@@ -183,7 +245,7 @@ class FilePathSettingDialog(simpledialog.Dialog):
         self.page_place(first_error_page_num)
         self.__current_page_entry.delete(0,tk.END)
         self.__current_page_entry.insert(0,f"{first_error_page_num+1}")
-        self.__current_page_label["text"]=f"ページ(その{first_error_page_num*5+1}-その{(first_error_page_num+1)*5})/6ページ"
+        self.__current_page_label_former["text"]=f"ページ(その{first_error_page_num*5+1}-その{(first_error_page_num+1)*5})"
         self.change_back_advance_btn_disp(self.__current_disp_page_num,first_error_page_num)
         self.__current_disp_page_num=first_error_page_num
         return False
@@ -230,7 +292,7 @@ class FilePathSettingDialog(simpledialog.Dialog):
      self.page_place(first_pad_page_num)
      self.__current_page_entry.delete(0,tk.END)
      self.__current_page_entry.insert(0,f"{first_pad_page_num+1}")
-     self.__current_page_label["text"]=f"ページ(その{first_pad_page_num*5+1}-その{(first_pad_page_num+1)*5})/6ページ"
+     self.__current_page_label_former["text"]=f"ページ(その{first_pad_page_num*5+1}-その{(first_pad_page_num+1)*5})"
      self.change_back_advance_btn_disp(self.__current_disp_page_num,first_pad_page_num)
      self.__current_disp_page_num=first_pad_page_num
           
@@ -247,7 +309,7 @@ class FilePathSettingDialog(simpledialog.Dialog):
      self.change_back_advance_btn_disp(self.__current_disp_page_num,0)
      self.__current_page_entry.delete(0,tk.END)
      self.__current_page_entry.insert(0,"1")
-     self.__current_page_label["text"]="ページ(その1-その5)/6ページ"
+     self.__current_page_label_former["text"]="ページ(その1-その5)"
      self.__current_disp_page_num=0
      messagebox.showinfo("取消完了","全入力欄のファイル選択・入力情報を初期化しました")
    
@@ -284,7 +346,7 @@ class FilePathSettingDialog(simpledialog.Dialog):
    
      #最初のページから最初以外のページへ進んだとき
      if change_before_page_num == 0 and change_after_page_num != 0:
-        self.__page_back_btn.place(x=96,y=624)
+        self.__page_back_btn.place(x=64,y=0)
      #最初以外から最初のページへ来たとき
      if change_before_page_num != 0 and change_after_page_num == 0:
         self.__page_back_btn.place_forget()
@@ -295,7 +357,8 @@ class FilePathSettingDialog(simpledialog.Dialog):
      
      #最後から最後以外に来た時
      if change_before_page_num == 5 and change_after_page_num != 5:
-        self.__page_advance_btn.place(x=720,y=624)
+        self.__page_advance_btn.place(x=720,y=0)
+
    
    
    #現在、30入力欄のうち、何も埋まっていない入力欄がいくつあるか
