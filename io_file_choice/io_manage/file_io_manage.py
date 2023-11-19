@@ -22,6 +22,20 @@ class FileRevertResultStatusCodes(IntEnum):
   REVERT_FILE_DELETE=2
   NO_NEED_REVERT=3
   
+  @classmethod
+  def code_to_status_str(cls,code):
+    if code == cls.REVERT_SUCCESS:
+      return "成功:ファイルを無事に置換する前の状態に戻すことができました。"
+    if code == cls.REVERT_FILE_OPENED:
+      return "失敗:ファイルが開かれたままか、読み取り専用になっておりましたので、元に戻すことができませんでした。"
+    if code == cls.REVERT_FILE_DELETE:
+      return "失敗:ファイルが元に戻そうとしている際に、消去されたため、元に戻すことができませんでした"
+    if code == cls.NO_NEED_REVERT:
+      return "失敗:元に戻すものがありませんでした"
+    
+    return "失敗:予期せぬエラーが発生しました"
+
+  
 
 
 class FileManageStatus:
@@ -218,7 +232,7 @@ class FileIOManage:
         return False
      
      #上書きじゃないときは変わっていないので元に戻す必要はない
-     if self.__src_file_path != self.__dst_src_file_path:
+     if self.__src_file_path_str != self.__dst_file_path_str:
         return False
      
      return True
@@ -234,6 +248,15 @@ class FileIOManage:
      status_result_str=self.__status and f"{self.__status}" or "まだ、読み取り、書き込みが行われておりません"
      return f"{src_str}{dst_str}\n結果:{status_result_str}"
      
+   
+   #ファイル選択をし、置換後、元に戻したくなった時に、実際にファイルの内容を開く処理が行えるよう、扱ったそれぞれのパスは公開する
+   @property
+   def src_file_path_str(self):
+     return self.__src_file_path_str
+   
+   @property
+   def dst_file_path_str(self):
+     return self.__dst_file_path_str
    
    @classmethod
    def judge_encode(cls,file_path:str):
