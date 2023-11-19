@@ -37,23 +37,35 @@ class ReplaceTextInputDialog(simpledialog.Dialog):
       self.__replace_after_label=tk.Label(self,text="置換後文字列",font=("times",11,"bold"))
       self.__replace_after_label.place(x=448,y=112)
       
-      self.__page_back_button=tk.Button(self,text="前ページへ戻る",font=("times",11))
+      
+      self.__page_operation_corner=tk.Frame(self,width=1200,height=48)
+      
+      self.__page_back_button=tk.Button(self.__page_operation_corner,text="前ページへ戻る",font=("times",11))
       self.__page_back_button.bind("<Button-1>",self.page_back)
       
-      self.__jump_page_entry=tk.Entry(self,width=2,font=("times",11))
-      self.__jump_page_entry.place(x=256,y=608)
+      self.__jump_page_operation_corner=tk.Frame(self.__page_operation_corner,width=352,height=48)
+      self.__jump_page_entry=tk.Entry(self.__jump_page_operation_corner,width=2,font=("times",11))
+      self.__jump_page_entry.bind("<Leave>",self.operation_corner_focus_remove)
+      self.__jump_page_entry.place(x=0,y=0)
       self.__jump_page_entry.insert(0,"1")
-      self.__jump_page_label=tk.Label(self,text="ページ(1-4)",font=("times",11))
-      self.__jump_page_label.place(x=320,y=608)
-      self.__jump_page_button=tk.Button(self,text="へ移動",font=("times",11))
-      self.__jump_page_button.place(x=480,y=608)
+      self.__jump_page_label=tk.Label(self.__jump_page_operation_corner,text="ページ(1-4)",font=("times",11))
+      self.__jump_page_label.place(x=64,y=0)
+      self.__jump_page_button=tk.Button(self.__jump_page_operation_corner,text="へ移動",font=("times",11))
+      self.__jump_page_button.place(x=224,y=0)
       self.__jump_page_button.bind("<Button-1>",self.page_jump)
-      self.__page_fin_label=tk.Label(self,text="/5ページ",font=("times",11))
-      self.__page_fin_label.place(x=544,y=608)
+      self.__page_fin_label=tk.Label(self.__jump_page_operation_corner,text="/5ページ",font=("times",11))
+      self.__page_fin_label.place(x=288,y=0)
+      self.__jump_page_operation_corner.place(x=256,y=8)
+      self.__jump_page_operation_corner.bind("<Enter>",self.operation_corner_focus_remove)
+      self.__jump_page_operation_corner.bind("<Leave>",self.operation_corner_focus_set)
       
-      self.__page_advance_button=tk.Button(self,text="次のページへ進む",font=("times",11))
-      self.__page_advance_button.place(x=768,y=608)
+      self.__page_advance_button=tk.Button(self.__page_operation_corner,text="次のページへ進む",font=("times",11))
+      self.__page_advance_button.place(x=768,y=0)
       self.__page_advance_button.bind("<Button-1>",self.page_advance)
+      
+      self.__page_operation_corner.place(x=0,y=608)
+      self.__page_operation_corner.bind("<Enter>",self.main_focus_remove)
+      self.__page_operation_corner.bind("<Leave>",self.main_focus_set)
       
       self.__cancel_button=tk.Button(self,text="登録をキャンセル",font=("times",11))
       self.__cancel_button.place(x=224,y=656)
@@ -136,6 +148,61 @@ class ReplaceTextInputDialog(simpledialog.Dialog):
           
       super().cancel()
     
+    
+    
+    #画面下部にあるページ移動が便利に行えるように、マウスがページ移動コーナーに入ったときは、メインの操作(Enterキーが押されたら、決定扱いし、escapeキーはキャンセルする)は
+    #いったんしないようにし、それぞれのページ移動の操作に集中するようにする。そのため、ダミーの何もしないメソッドを取り付けて、メインの操作をできなくする
+    #メインからページ操作コーナーに入ったとき
+    def main_focus_remove(self,event):
+      def dummy(event=None):
+        pass
+      
+      self.__page_operation_corner.focus_set() 
+      self.bind("<Escape>",dummy)
+      self.bind("<Return>",dummy)
+      self.__page_operation_corner.bind("<Return>",self.page_advance)
+      self.__page_operation_corner.bind("<BackSpace>",self.page_back)
+       
+    
+    #こちらはメインの操作の復帰
+    #ページ操作コーナーからメインに戻ってきたとき
+    def main_focus_set(self,event=None):
+      def dummy(event=None):
+        pass
+      
+      self.focus_set()
+      self.bind("<Escape>",self.cancel)
+      self.bind("<Return>",self.ok)
+      self.__page_operation_corner.bind("<Return>",dummy)
+      self.__page_operation_corner.bind("<BackSpace>",dummy)
+      self.__jump_page_operation_corner.bind("<Return>",dummy)
+    
+    
+    def operation_corner_focus_remove(self,event=None):
+      def dummy(event=None):
+        pass
+     
+      self.__jump_page_operation_corner.focus_set()
+      self.__page_operation_corner.bind("<Return>",dummy)
+      self.__page_operation_corner.bind("<BackSpace>",dummy)
+      self.__jump_page_operation_corner.bind("<Return>",self.page_jump)
+      self.__jump_page_entry.bind("<Return>",self.page_jump)
+     
+    #ジャンプコーナーからページ操作コーナーへ出たとき
+    def operation_corner_focus_set(self,event=None):
+      def dummy(event=None):
+        pass
+      self.__page_operation_corner.focus_set() 
+      self.__page_operation_corner.bind("<Return>",self.page_advance)
+      self.__page_operation_corner.bind("<BackSpace>",self.page_back)
+      self.__jump_page_operation_corner.bind("<Return>",dummy)
+      self.__jump_page_entry.bind("<Return>",dummy)
+    
+    
+      
+      
+    
+    
     #「全入力欄初期化」・・ここは入力欄の取り消し(=20の入力欄を全部空白にして,ラベルなどを初期表示に戻す)のみを行う。
     #これまで入力したすべてのデータの取り消しはユーザーがこれを実行した後に、「内容決定」ボタンを押さない限り行わない。
     #つまり、これを実行した後でも、キャンセルボタンを押せば、ダイアログを開く前のデータは保存されたままでよい
@@ -175,7 +242,7 @@ class ReplaceTextInputDialog(simpledialog.Dialog):
         self.__page_back_button.place_forget()
       #一番最後のページから、最後から2番目のページに戻ってきたとき
       elif self.__current_disp_page == 3:
-        self.__page_advance_button.place(x=768,y=608)
+        self.__page_advance_button.place(x=768,y=0)
      
     def page_advance(self,event=None):
       if 4 <= self.__current_disp_page:
@@ -194,7 +261,7 @@ class ReplaceTextInputDialog(simpledialog.Dialog):
           self.__page_advance_button.place_forget()
       #1番最初のページから２番目のページにたどり着いたとき
       elif self.__current_disp_page == 1:
-          self.__page_back_button.place(x=32,y=608)
+          self.__page_back_button.place(x=32,y=0)
      
     #指定されたページに飛ぶとき
     def page_jump(self,event=None):
@@ -268,7 +335,7 @@ class ReplaceTextInputDialog(simpledialog.Dialog):
       #0ページ目が最初のページ(=1が入力されたとき),4ページ目が最後のページ(=5が入力されたとき)
       #もともと最初のページにいて,遷移先が最初のページ以外なら戻るボタン復活
       if self.__current_disp_page == 0 and new_page != 0:
-        self.__page_back_button.place(x=32,y=608)
+        self.__page_back_button.place(x=32,y=0)
         
       #もともと最初以外のページにいて,遷移先が最初のページなら戻るボタンを消す
       if self.__current_disp_page != 0 and new_page == 0:
@@ -276,7 +343,7 @@ class ReplaceTextInputDialog(simpledialog.Dialog):
         
       #もともと最後のページにいて、遷移先が最後のページ以外なら進むボタン復活
       if self.__current_disp_page == 4 and new_page != 4:
-        self.__page_advance_button.place(x=768,y=608)
+        self.__page_advance_button.place(x=768,y=0)
         
       #もともと最後以外のページにいて、遷移先が最後のページなら進むボタン削除
       if self.__current_disp_page != 4 and new_page == 4:
