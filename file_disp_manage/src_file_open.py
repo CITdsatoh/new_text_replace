@@ -2,6 +2,8 @@
 from tkinter import simpledialog,messagebox
 import tkinter as tk
 import subprocess
+import os
+from file_disp_manage.file_open_setting import FileOpenApplicationSettingDialog
 
 
 
@@ -31,14 +33,14 @@ class SrcFileOpenDialog(simpledialog.Dialog):
     self.__header_label=tk.Label(self,text="置換後に元に戻したいファイル選択",font=("serif",14,"bold"))
     self.__header_label.place(x=160,y=8)
     
-    self.__explain_label=tk.Label(self,text="ここではファイル置換後、結果が意図するものと異なっていた時、置換前の状態にファイルを戻すことができます。\n元に戻したいファイル名が書かれたところの左にあるチェックを入れ、下の「元に戻す」ボタンを押してください。\nまた、元に戻す前に「ファイル内容を確認」ボタンから、現在のファイルの状態を確認することができます。\nその場合、必ずファイルを閉じてから、「元に戻す」ボタンを押すようにしてください。",font=("times",12))
+    self.__explain_label=tk.Label(self,text="ここではファイル置換後、結果が意図するものと異なっていた時、置換前の状態にファイルを戻すことができます。\n元に戻したいファイル名が書かれたところの左にあるチェックを入れ、下の「元に戻す」ボタンを押してください。\nまた、元に戻す前に「内容を確認」ボタンから、現在のファイルの状態を確認することができます。\nその場合、必ずファイルを閉じてから、「元に戻す」ボタンを押すようにしてください。\nなお、それぞれのファイルは、デフォルトでは、そのファイルをダブルクリックしたときと同じアプリケーション(既定のアプリ)で\n開かれます。これらを変更したい場合、特に、「.py」や「.js」などのプログラムのファイルをテキスト形式で\nエディタで開くようにしたい場合は「開くアプリを変更」から設定してください.",font=("times",12))
     self.__explain_label.place(x=8,y=48)
     
     self.__check_label=tk.Label(self,text="元に戻す",font=("times",11,"bold"))
-    self.__check_label.place(x=8,y=128)
+    self.__check_label.place(x=8,y=192)
     
     self.__file_path_head_label=tk.Label(self,text="元に戻したいファイルパス",font=("times",11,"bold"))
-    self.__file_path_head_label.place(x=256,y=128)
+    self.__file_path_head_label.place(x=256,y=192)
     
     for one_file_path_str in self.__file_path_obj_index_dict.keys():
       one_file_open_manage_widget=SrcFileOpenManager(self,one_file_path_str)
@@ -53,27 +55,27 @@ class SrcFileOpenDialog(simpledialog.Dialog):
     self.__page_advance_btn.bind("<Button-1>",self.page_advance)
     
     self.__current_page_label=tk.Label(self,text=f"1ページ/{self.__all_pages_num}ページ",font=("times",11))
-    self.__current_page_label.place(x=224,y=512)
+    self.__current_page_label.place(x=224,y=576)
     
     if 1 < self.__all_pages_num:
-      self.__page_advance_btn.place(x=576,y=512) 
+      self.__page_advance_btn.place(x=576,y=576) 
       
     
     
     self.__revert_ok_btn=tk.Button(self,text="元に戻す",font=("times",11,"bold"))
-    self.__revert_ok_btn.place(x=192,y=560)
+    self.__revert_ok_btn.place(x=192,y=624)
     self.__revert_ok_btn.bind("<Button-1>",self.ok)
     
     self.__revert_cancel_btn=tk.Button(self,text="キャンセル",font=("times",11))
-    self.__revert_cancel_btn.place(x=384,y=560)
+    self.__revert_cancel_btn.place(x=384,y=624)
     self.__revert_cancel_btn.bind("<Button-1>",self.cancel)
      
     self.__all_check_btn=tk.Button(self,text="すべて選択(チェックを入れる)",font=("times",11))
-    self.__all_check_btn.place(x=32,y=608)
+    self.__all_check_btn.place(x=32,y=672)
     self.__all_check_btn.bind("<Button-1>",self.all_check)
     
     self.__all_remove_check_btn=tk.Button(self,text="すべて選択解除(チェックを外す)",font=("times",11))
-    self.__all_remove_check_btn.place(x=320,y=608)
+    self.__all_remove_check_btn.place(x=320,y=672)
     self.__all_remove_check_btn.bind("<Button-1>",self.all_remove_check)
     
     
@@ -82,7 +84,7 @@ class SrcFileOpenDialog(simpledialog.Dialog):
     
     self.page_widgets_place(0)
     
-    self.geometry("896x664")
+    self.geometry("928x664")
   
   
   #開いたファイルすべてを閉じたかどうかを確認し、一つでも閉じていないものがあればFalseを返し、ダイアログを閉じられないようにする
@@ -143,7 +145,7 @@ class SrcFileOpenDialog(simpledialog.Dialog):
     self.__current_page_label["text"]=f"{self.__current_page_num+1}ページ/{self.__all_pages_num}ページ"
     
     if self.__current_page_num == self.__all_pages_num-2:
-       self.__page_advance_btn.place(x=576,y=512) 
+       self.__page_advance_btn.place(x=576,y=576) 
     if self.__current_page_num == 0:
        self.__page_back_btn.place_forget()
   
@@ -159,7 +161,7 @@ class SrcFileOpenDialog(simpledialog.Dialog):
     if self.__current_page_num == self.__all_pages_num-1:
        self.__page_advance_btn.place_forget() 
     if self.__current_page_num == 1:
-       self.__page_back_btn.place(x=32,y=512)
+       self.__page_back_btn.place(x=32,y=576)
   
   
   def page_widgets_place(self,page_num:int=None):
@@ -172,7 +174,7 @@ class SrcFileOpenDialog(simpledialog.Dialog):
     for i in range(page_start_widget_num,page_start_widget_num+self.__one_page_widgets):
        if len(self.__file_open_manage_widgets) <= i:
           break
-       self.__file_open_manage_widgets[i].place(x=0,y=176+(one_page_widget_num*32))
+       self.__file_open_manage_widgets[i].place(x=0,y=224+(one_page_widget_num*32))
        one_page_widget_num += 1
   
   def page_widgets_place_forget(self,page_num:int=None):
@@ -192,7 +194,7 @@ class SrcFileOpenDialog(simpledialog.Dialog):
 
 class SrcFileOpenManager(tk.Frame):
 
-  def __init__(self,master,src_file_abs_path:str,w=896,h=32):
+  def __init__(self,master,src_file_abs_path:str,w=928,h=32):
     super().__init__(master,width=w,height=h)
     self.__src_file_abs_path=src_file_abs_path
     
@@ -209,9 +211,13 @@ class SrcFileOpenManager(tk.Frame):
     #self.__revert_file_path_disps["xscrollcommand"]=self.__revert_file_path_disps_scroll.set
     #self.__revert_file_path_disps.place(x=48,y=80)
     
-    self.__file_open_btn=tk.Button(self,text="ファイル内容を確認",font=("times",11,"bold"))
+    self.__file_open_btn=tk.Button(self,text="内容を確認",font=("times",11,"bold"))
     self.__file_open_btn.place(x=656,y=0)
     self.__file_open_btn.bind("<Button-1>",self.src_file_open)
+    
+    self.__open_application_setting_btn=tk.Button(self,text="開くアプリを設定",font=("times",11))
+    self.__open_application_setting_btn.place(x=768,y=0)
+    self.__open_application_setting_btn.bind("<Button-1>",self.open_application_setting)
     
     #ファイルを開くプロセス(=ファイルが閉じられているかを確認するために用いる)
     self.__file_open_proc=None
@@ -225,7 +231,18 @@ class SrcFileOpenManager(tk.Frame):
   
   #実際にファイルを開く
   def src_file_open(self,event=None):
-    self.__file_open_proc=subprocess.Popen([self.__src_file_abs_path],shell=True)
+    file_ext=os.path.splitext(self.__src_file_abs_path)[1]
+    open_application_file_path=FileOpenApplicationSettingDialog.get_open_application_file_path(file_ext)
+    
+    if len(open_application_file_path) == 0:
+     self.__file_open_proc=subprocess.Popen([self.__src_file_abs_path],shell=True)
+     return
+    
+    self.__file_open_proc=subprocess.Popen([open_application_file_path,self.__src_file_abs_path],shell=True)
+  
+  def open_application_setting(self,event=None):
+    file_ext=os.path.splitext(self.__src_file_abs_path)[1]
+    dialog=FileOpenApplicationSettingDialog(self,file_ext)
   
   #現在、ファイルが開かれているかどうかを返却する(=全ファイルが閉じられるまで、ダイアログを閉じれないようにするため)
   def is_current_file_opened(self):
