@@ -3,6 +3,7 @@
 from io_file_choice.io_file_choice_controler import IOFileChoiceControler
 from replace_choice.replace_choice_controler import ReplaceChoiceControler
 from file_disp_manage.src_file_open import SrcFileOpenDialog
+from file_disp_manage.file_open_setting import FileOpenApplicationSettingDialog
 from io_file_choice.io_manage.file_io_manage import FileRevertResultStatusCodes
 
 import tkinter as tk
@@ -12,6 +13,8 @@ class FileTextReplaceMainWindow(tk.Tk):
   
   def __init__(self):
     super().__init__()
+    FileOpenApplicationSettingDialog.read_file_path_from_ini_file()
+    
     self.__main_header=tk.Label(self,text="ファイルテキスト一括置換アプリ",font=("serif",18,"bold"))
     self.__main_header.place(x=256,y=0)
     
@@ -57,6 +60,7 @@ class FileTextReplaceMainWindow(tk.Tk):
     
     
     self.bind("<Escape>",self.exit)
+    self.protocol("<WM_DELETE_WINDOW>",self.exit)
     self.geometry("1024x768")
   
   def replace_execute(self,event=None):
@@ -193,6 +197,7 @@ class FileTextReplaceMainWindow(tk.Tk):
     #result_dialog=RevertResultStatusDialog(self,revert_results)
   
   def exit(self,event=None):
+    FileOpenApplicationSettingDialog.write_file_path_to_ini_file()
     self.destroy()
   
   #設定ウィンドウが閉じられたときにファイル(テキスト)設定ウィンドウ側から呼び出す
