@@ -8,6 +8,10 @@ def decide_BM_slide_index(current_checking_str:str,search_str:str):
   if len(current_checking_str) < len(search_str):
     return len(search_str)
   
+  #そもそも、探索したいテキストが1文字しかなかった場合は、1文字しかずれないことが確定
+  if len(search_str) == 1:
+    return 1
+  
   i=len(current_checking_str)-1
   
   while 0 <= i:
