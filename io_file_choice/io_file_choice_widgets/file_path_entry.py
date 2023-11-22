@@ -5,6 +5,7 @@ from tkinter import simpledialog
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename,asksaveasfilename
 import os
+import re
 from io_file_choice.io_manage.file_io_manage import FileIOManage,not_sep
 
 
@@ -143,6 +144,20 @@ class FilePathEntryCorner(tk.Frame):
      
      if not os.path.isfile(self.__src_file_path_entry.get()):
        self.__error_disp_label["text"]="エラー:テキストを置換するファイルが誤ってフォルダが指定されているか、拡張子が抜けているか、あるいは、\n存在しないファイルが指定されています。ファイルは完全な形で入力してください"
+       self.__error_disp_label["bg"]="#ff8888"
+       os.chdir(ini_working_dir)
+       return None
+     
+     #ドライブ名を除いた文字列
+     dst_file_path_except_drive=re.sub("^[a-zA-Z]:([\\\\/])","\\1",self.__dst_file_path_entry.get())
+     if re.search("[\"<>\\|\\?\\*:]",dst_file_path_except_drive):
+       self.__error_disp_label["text"]="エラー:置換結果を書き込むファイルの名前に、使用できない文字が含まれています。なお、使用できない文字は、\n「\"」、「<」、「>」、「*」、「?」、「|」、「:」です。これらを除いたファイル名を指定してください。"
+       self.__error_disp_label["bg"]="#ff8888"
+       os.chdir(ini_working_dir)
+       return None
+     
+     if re.search("[\\\\/]{2,}",dst_file_path_except_drive):
+       self.__error_disp_label["text"]="エラー:置換結果を書き込むファイルのパスに区切り文字(「\\」あるいは「/」)が連続で並んでいます。\n区切り文字を連続で使用しないでください。"
        self.__error_disp_label["bg"]="#ff8888"
        os.chdir(ini_working_dir)
        return None
