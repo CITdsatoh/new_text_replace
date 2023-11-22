@@ -59,18 +59,23 @@ class IOFileChoiceControler(tk.Frame):
   
   #これまで、どんなものが入力欄に入っているのかを確認するためのダイアログを表示
   def disp_current_choice_status(self,event=None):
+    each_choice_status_strs=self.get_current_choice_strs_list(True)
+    status_dialog=IOFileChoiceStatusDialog(self.__master,tuple(each_choice_status_strs))
+  
+  
+  def get_current_choice_strs_list(self,add_indentation:bool=False):
     each_choice_status_strs=[]
     for i,one_input_information in enumerate(self.__input_information):
         one_information_str=one_input_information and f"{one_input_information}" or "未設定"
         one_choice_status_str=f"その{i+1}:{one_information_str}"
-        #左揃えにしたいので、2行目以降は、行頭を合わせるために,そのi+1分空白を入れる
-        header_bytes_num=(len(f"その{i+1}:".encode("utf-8")))
-        line_head_pads="\u0020"*header_bytes_num
-        one_choice_status_str=one_choice_status_str.replace("\n",f"\n{line_head_pads}")
+        if add_indentation:
+         #左揃えにしたいので、2行目以降は、行頭を合わせるために,「そのi+1分」という文字列のバイト数分空白を入れる
+         header_bytes_num=len(f"その{i+1}:".encode("utf-8"))
+         line_head_pads="\u0020"*header_bytes_num
+         one_choice_status_str=one_choice_status_str.replace("\n",f"\n{line_head_pads}")
         each_choice_status_strs.append(one_choice_status_str)
         
-    status_dialog=IOFileChoiceStatusDialog(self.__master,tuple(each_choice_status_strs))
-  
+    return each_choice_status_strs
   
   def all_reset_file_choice(self,event=None):
     if event is not None:
