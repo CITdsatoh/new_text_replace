@@ -59,7 +59,7 @@ class ReplaceChoiceControler(tk.Frame):
        if one_input_data is None:
           continue
        replace_information_obj=one_input_data.get_replace_information_obj()
-       if replace_information is not None:
+       if replace_information_obj is not None:
          replacers_information.append(replace_information_obj)
    
     return replacers_information
@@ -68,24 +68,33 @@ class ReplaceChoiceControler(tk.Frame):
   #同時置換モードが有効かどうか(=これに応じて、メインウィンドウで、同時置換用の処理と通常の処理を分岐する)
   def is_only_once_replace(self):
     return  self.__is_only_once_replace_widget_var.get()
-    
   
   #現在入力されているものを表示するダイアログ
   def disp_current_choice_status(self,event=None):
-    disp_each_input_strs=[]
-    for i,one_input_data in enumerate(self.__all_inputs_data):
-      one_input_str_header=f"その{i+1}:"
-      one_input_str_body=one_input_data and f"{one_input_data}" or "未入力"
-      #各情報は改行して表示されるので、見やすくするため、one_input_str_headerのバイト数分だけ改行後空白を入れる
-      one_line_pads="\u0020"*len(one_input_str_header.encode("utf-8"))
-      one_input_str_body=one_input_str_body.replace("\n",f"\n{one_line_pads}")
-      one_input_whole_str=f"{one_input_str_header}{one_input_str_body}"
-      disp_each_input_strs.append(one_input_whole_str)
-    
+    disp_each_input_strs=self.get_current_choice_strs_list(True)
     dialog=ReplaceTextChoiceStatusDialog(self.__master,tuple(disp_each_input_strs))
   
   def disp_only_once_mode_explain_dialog(self,event=None):
     dialog=OnlyOnceReplaceModeExplainDialog(self.__master)
+  
+  
+  #現在の置換テキストの入力内容の返却(返却値はリストで各要素に入力文字列を入れる)
+  #第一引数は、ダイアログ表示の際に見やすくするための行頭にインデントを入れるかどうかを指定
+  def get_current_choice_strs_list(self,add_indentation:bool=False):
+    each_input_strs=[]
+    for i,one_input_data in enumerate(self.__all_inputs_data):
+      one_input_str_header=f"その{i+1}:"
+      one_input_str_body=one_input_data and f"{one_input_data}" or "未入力"
+      if add_indentation:
+       #各情報は改行して表示されるので、見やすくするため、one_input_str_headerのバイト数分だけ改行後空白を入れる
+       one_line_pads="\u0020"*len(one_input_str_header.encode("utf-8"))
+       one_input_str_body=one_input_str_body.replace("\n",f"\n{one_line_pads}")
+       
+      one_input_whole_str=f"{one_input_str_header}{one_input_str_body}"
+      each_input_strs.append(one_input_whole_str)
+    
+    return each_input_strs
+    
   
   def all_reset_replace_choice(self,event=None):
     if event is not None:
