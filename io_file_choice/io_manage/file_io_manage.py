@@ -77,7 +77,7 @@ class FileManageStatus:
     if self.__status == FileIOResultStatusCodes.DST_FILE_IN_NON_EXIST_DIR:
       return "置換結果を書き込むファイルが、存在しないフォルダの中にあるものが指定されました。"
     if self.__status == FileIOResultStatusCodes.DST_FILE_NON_PERMISSION:
-      return "置換結果を書き込むファイルが、書き込み時に閉じられていないか、読み取り専用になっていて書き込みができませんでした。"
+      return "置換結果を書き込むファイルが、書き込み時に閉じられていないか、読み取り専用になっているか、あるいは、書き込み権限がないフォルダが指定されたため書き込みができませんでした。"
     if self.__status == FileIOResultStatusCodes.DST_FILE_DECODE_FAULT:
       return f"置換後文字列として指定されている文字列の一部に、{self.__encode_info}では使用できない文字列が混在しており、正しく書き込みができませんでした"
     
@@ -86,6 +86,10 @@ class FileManageStatus:
   def __str__(self):
     status_str="成功" if self.__status == FileIOResultStatusCodes.IO_SUCCESS else "失敗"
     return f"{status_str}:{self.get_status_str()}"
+  
+  @property
+  def status_code(self):
+    return self.__status
 
 class FileIOManage:
 
@@ -234,6 +238,15 @@ class FileIOManage:
      #上書きじゃないときは変わっていないので元に戻す必要はない
      if self.__src_file_path_str != self.__dst_file_path_str:
         return False
+     
+     #そもそも書き込みが終わってないとき
+     if self.__status is None:
+        return False
+     
+     #書き込みに失敗した場合(=読み取り専用ファイルや開かれているファイルから読み取って、書き込みしようとしたとき)
+     if self.__status.status_code != FileIOResultStatusCodes.IO_SUCCESS:
+        return False
+        
      
      return True
      
