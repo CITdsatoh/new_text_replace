@@ -48,7 +48,7 @@ class ReplaceResultDialog(simpledialog.Dialog):
        failure_corner_lines=15
     
     
-    success_head_label_y_axis=128
+    success_head_label_y_axis=96
     diff=0
     self.__success_header_label=tk.Label(self,text="成功",font=("times",12,"bold"))
     self.__success_header_label.place(x=16,y=success_head_label_y_axis+diff)
@@ -78,11 +78,17 @@ class ReplaceResultDialog(simpledialog.Dialog):
     diff += 16+(16*failure_corner_lines)
     
     foot_explaination_str="なお、置換を行ったファイルの情報のみならず、置換を行ったテキスト情報を含んだ、さらに詳しい情報が\n必要な場合は、このダイアログを閉じた先のメインウィンドウに存在する\n「置換結果をテキストファイルに出力する」ボタンを\n押してください。すると、それらの情報を含めて、詳細情報をテキストファイルとして保存することができます"
-    self.__fin_explaination_label=tk.Label(self,text=foot_explaination_str,font=("times",11,"bold"))
+    self.__fin_explaination_label=tk.Label(self,text=foot_explaination_str,font=("times",10,"bold"))
     self.__fin_explaination_label.place(x=8,y=success_head_label_y_axis+diff)
     
+    
+    last_explaination_str="また、エラー箇所を修正後、もう一度置換しなおす場合、必ず、書き込みが成功したものに関しては、\n上書きを指定している場合、次回(修正後)の置換の対象から外すか、\n一度元に戻してから、置換しなおしてください。このままの場合、置換された結果がさらに置換されてしまい、\n意図したものと異なったものになってしまう可能性があります"
+    self.__last_warning_label=tk.Label(self,text=last_explaination_str,font=("times",10,"bold"),fg="#ff0000")
+    self.__last_warning_label.place(x=8,y=success_head_label_y_axis+diff+64)
+    
+    
     self.__ok_btn=tk.Button(self,text="了解",font=("times",11,"bold"))
-    self.__ok_btn.place(x=384,y=success_head_label_y_axis+diff+96)
+    self.__ok_btn.place(x=384,y=success_head_label_y_axis+diff+128)
     self.__ok_btn.bind("<Button-1>",self.ok)
     
     self.bind("<Escape>",self.cancel)
