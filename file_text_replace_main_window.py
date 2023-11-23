@@ -82,6 +82,7 @@ class FileTextReplaceMainWindow(tk.Tk):
     
     
     self.bind("<Escape>",self.exit)
+    self.bind("<Return>",self.replace_execute)
     self.protocol("<WM_DELETE_WINDOW>",self.exit)
     self.geometry("1024x768")
   
