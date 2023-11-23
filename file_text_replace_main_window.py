@@ -6,6 +6,7 @@ from file_disp_manage.src_file_open import SrcFileOpenDialog
 from file_disp_manage.file_open_setting import FileOpenApplicationSettingDialog
 from io_file_choice.io_manage.file_io_manage import FileRevertResultStatusCodes,not_sep
 from replace_result_dialog import  ReplaceResultDialog
+from revert_result_status_dialog import RevertResultStatusDialog
 
 import tkinter as tk
 from tkinter import messagebox,filedialog
@@ -14,6 +15,7 @@ import re
 from datetime import datetime
 import subprocess
 import pathlib
+import shutil
 
 class FileTextReplaceMainWindow(tk.Tk):
   
@@ -90,6 +92,7 @@ class FileTextReplaceMainWindow(tk.Tk):
       if not is_double_replace_ok:
          return
     
+      
     new_replacers_information=self.__replace_text_control.get_replace_information_objs()
     if len(new_replacers_information) == 0:
       messagebox.showerror("エラー","置換したいテキスト内容が1つも指定されていないようです。最低1つ以上置換したいテキストを指定してください")
@@ -195,7 +198,7 @@ class FileTextReplaceMainWindow(tk.Tk):
           current_file_path_str=one_file_manager.src_file_path_str
           self.__revertable_file_and_index_in_file_managers[current_file_path_str]=index
     
-    print(self.__revertable_file_and_index_in_file_managers)
+    #print(self.__revertable_file_and_index_in_file_managers)
     if len(self.__revertable_file_and_index_in_file_managers.keys()) != 0:
       self.__revert_text_btn.place(x=224,y=664)
       
@@ -211,13 +214,7 @@ class FileTextReplaceMainWindow(tk.Tk):
     if not is_really_ok_all_reset:
        return
     
-    self.__revert_text_btn.place_forget()
-    self.__file_write_replace_result.place_forget()
-    self.__revertable_file_and_index_in_file_managers={}
-    self.__has_any_setting_changed_after_previous_replacement=True
-    self.__replace_datetime=None
-    self.__replacers_information=[]
-    self.__file_managers=[]
+    self.any_information_changed()
     
     self.__replace_text_control.all_reset_replace_choice()
     self.__replace_file_control.all_reset_file_choice()
@@ -233,20 +230,21 @@ class FileTextReplaceMainWindow(tk.Tk):
     if revert_file_indexs is None:
        return
     
-    print(revert_file_indexs)
-    print("選択されたファイルパス")
-    for index in revert_file_indexs:
-      print(self.__file_managers[index].src_file_path_str)
+    #print(revert_file_indexs)
+    #print("選択されたファイルパス")
+    #for index in revert_file_indexs:
+    #  print(self.__file_managers[index].src_file_path_str)
       
     
     #元に戻した結果を入れる
-    #revert_results={}
-    #for one_index in revert_file_indexs:
-       #one_io_obj=self.__file_managers[one_index]
-       #status_code=one_io_obj.revert_to_replace_before_str()
-       #revert_results[one_io_obj.src_file_path_str]=FileRevertResultStatusCodes.code_to_status_str(status_code)
+    revert_results={}
+    for one_index in revert_file_indexs:
+       one_io_obj=self.__file_managers[one_index]
+       status_code=one_io_obj.revert_to_replace_before_str()
+       revert_results[one_io_obj.src_file_path_str]=FileRevertResultStatusCodes.code_to_status_str(status_code)
     
-    #result_dialog=RevertResultStatusDialog(self,revert_results)
+    #print(revert_results)
+    result_dialog=RevertResultStatusDialog(self,revert_results)
   
   def choice_result_write_file_path(self,event=None):
     if len(self.__file_managers) == 0:
@@ -351,8 +349,11 @@ class FileTextReplaceMainWindow(tk.Tk):
         f.close()
    
   def exit(self,event=None):
-    FileOpenApplicationSettingDialog.write_file_path_to_ini_file()
-    self.destroy()
+    try:
+      FileOpenApplicationSettingDialog.write_file_path_to_ini_file()
+      self.__class__.remove_log_files_over_one_hundred()
+    finally:
+      self.destroy()
   
   #設定ウィンドウが閉じられたときにファイル(テキスト)設定ウィンドウ側から呼び出す
   #こちらのウィンドウは、直接、ファイル(テキスト)設定ウィンドウをインスタンス変数として持っていないため(間に、ファイル設定欄とテキスト設定欄があるため)、こちらから変化があったことはわからない
@@ -365,6 +366,8 @@ class FileTextReplaceMainWindow(tk.Tk):
    self.__revertable_file_and_index_in_file_managers={}
    self.__has_any_setting_changed_after_previous_replacement=True
    self.__replace_datetime=None
+   self.__replacers_information=[]
+   self.__file_managers=[]
   
   #ファイルに置換情報を書き込むとき用(置換テキスト)
   def get_replace_information_strs_list(self):
@@ -389,6 +392,38 @@ class FileTextReplaceMainWindow(tk.Tk):
     
     file_name=f"{classification}_{datetime_str}.txt"
     return str(path_sub_obj/file_name)
+  
+  #ログ用ファイルの削除(毎回の置換ごとに、置換内容と入力内容をログとして、保存しているが、無限にログをとっておくわけにいかないので、100個たまったらここで自動削除する)
+  #アプリを閉じるときに行う
+  @classmethod
+  def remove_log_files_over_one_hundred(cls):
+    if not os.path.exists(cls.__log_files_save_dir):
+       return
+    
+    all_log_dirs=[]
+    for one_log_dir in os.listdir(cls.__log_files_save_dir):
+      one_abs_log_dir=os.path.join(cls.__log_files_save_dir,one_log_dir)
+      if os.path.isdir(one_abs_log_dir):
+        all_log_dirs.append(one_abs_log_dir)
+    
+    all_logs_num=100
+    current_log_dirs_num=len(all_log_dirs)
+    
+    if current_log_dirs_num <= all_logs_num:
+      return
+    
+    all_log_dirs.sort(key=os.path.getctime)
+    
+    for one_log_dir in all_log_dirs:
+      if current_log_dirs_num <= all_logs_num:
+        break
+      try:
+        shutil.rmtree(one_log_dir)
+        current_log_dirs_num -= 1
+      except (FileNotFoundError,PermissionError):
+        pass
+    
+  
     
  
 
