@@ -90,14 +90,14 @@ class Replacer:
      if self.__replace_mode == "wc":
       #ワイルドカード置換の場合(re.subはワイルドカードでは使用できないし、ワイルドカード置換のメソッドも存在しないため,正規表現に変換する)
       reg_exp_str=self.__class__.wildcard_to_reg_exp(self.__before_str)
-      if len(self.__ng_words_list) == 0:
-        if self.__is_ignore_case:
-          return re.sub(reg_exp_str,self.__after_str,contents,flags=re.IGNORECASE)
-        return re.sub(reg_exp_str,self.__after_str,contents)
       
       after_replaced_contents=contents
-      #ワイルドカードが「*」だったとき、「.*」という貪欲マッチに変換されるので、ここでは貪欲マッチではなく最短マッチにする
-      reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",reg_exp_str)
+      if not reg_exp_str.endswith(".*"):
+        #ワイルドカードが「*」だったとき、「.*」という貪欲マッチに変換されるので末尾に「*」があったとき、つまり前方一致の時以外は、ここでは貪欲マッチではなく最短マッチにする
+        reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",reg_exp_str)
+      #ただし、「.*」で終わった場合、最後以外は最短マッチに直す
+      elif 1 <  reg_exp_str.count(".*"):
+        reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",reg_exp_str)
       
       reg_match_words_include_empty=flatten_list(tuple(re.findall(reg_exp_str,after_replaced_contents)))
       if self.__is_ignore_case:
@@ -114,10 +114,6 @@ class Replacer:
      
      #正規表現置換
      if self.__replace_mode == "re":
-       if len(self.__ng_words_list) == 0:
-         if self.__is_ignore_case:
-           return re.sub(self.__before_str,self.__after_str,contents,flags=re.IGNORECASE)
-         return re.sub(self.__before_str,self.__after_str,contents)
        
        after_replaced_contents=contents
        
@@ -151,20 +147,43 @@ class Replacer:
             return re.sub(self.__before_str,self.__after_str,contents,flags=re.IGNORECASE)
          return re.sub(self.__before_str,self.__after_str,contents)
        
-       reg_match_words_include_empty=flatten_list(re.findall(self.__before_str,after_replaced_contents))
+       reg_match_words_include_empty=flatten_list(re.findall(self.__before_str,contents))
        if self.__is_ignore_case:
-         reg_match_words_include_empty=flatten_list(re.findall(self.__before_str,after_replaced_contents,re.IGNORECASE))
+         reg_match_words_include_empty=flatten_list(re.findall(self.__before_str,contents,re.IGNORECASE))
        
        reg_match_words=[one_exp for one_exp in reg_match_words_include_empty if len(one_exp) != 0]
+       #print(reg_match_words)
+       #print(self.__before_str)
        for one_reg_match_word in reg_match_words:
          if self.any_ng_word_match_expr_in_each_mode(one_reg_match_word):
             continue
          
+         print(one_reg_match_word)
+         one_reg_match_word=re.sub("([\\(\\)\\|\\+\\?\\*\\-\\[\\]\\{\\}\\^\\$\\.\\\\])","\\\\\\g<1>",one_reg_match_word)
          replace_reg_exp_str=ReplaceInformation.get_br_escaped_reg_exp_str(one_reg_match_word)
+         print(repr(replace_reg_exp_str))
          after_replaced_contents=re.sub(replace_reg_exp_str,self.__after_str,after_replaced_contents)
        
        return after_replaced_contents
      
+     
+     #置換された言葉がさらに置換されないようにするため、置換された単語は各文字の間に、改行コードが入っている
+     #例えば、「あいうえお」を「かきくけこ」に置換し、その後「かきくけこ」を「さしすせそ」に置換すると指定した場合、「あいうえお」も「かきくけこ」への置換を経て、
+     #「さしすせそ」になってしまうので、置換された結果「かきくけこ」になったことを示すため、「\nか\nき\nく\nけ\nこ」に一時的になっている。
+     #そうなっているかどうか調べるローカル関数
+     def judge_this_token_replaced(current_index,contents):
+       #今1番最初の文字か1番最後の文字なら、前後は調べようがないので、関数を出る
+       if current_index == 0:
+         return False
+       if current_index == len(contents) -1:
+         return False
+       if contents[current_index-1] != "\n":
+         return False 
+       if contents[current_index+1] != "\n":
+         return False
+       
+       return True
+       
      
      #通常置換(部分一致置換)
      #この時のみ、ngワード(特定の場合のみ置換しない)が設定可能
@@ -185,6 +204,15 @@ class Replacer:
           i += slide_index
           continue
           
+       #なので、ここでは1文字を置換するときに限るが、現在参照しているインデックスの前後が改行コードに挟まれていたら、
+       #そこは置換された結果そうなったということになるので、置換の対象から外す
+       if len(current_checking_str) == 1:
+        if judge_this_token_replaced(i,contents):
+          #この時点で、次の文字(i+1番目の文字)は、改行コードであることがわかったので、2つ分飛ばしてよい
+          replaced_str_tokens.append(contents[i:i+2])
+          i += 2
+          continue
+        
        #検索文字列(置換するキーワード文字列)が見つかったとき
        #ngワードを一つずつ調べる
        for one_ng_word in self.__ng_words_list:
@@ -329,6 +357,8 @@ class Replacer:
 #こちらは置換内容がテキストとして入力された後、入力内容を置換しやすいように内部変換する仲介クラス
 class ReplaceInformation:
   
+ 
+  
   def __init__(self,replace_before:str,replace_after:str,replace_mode:str="p",is_ignore_case:bool=False,ng_words_list:tuple=None,ng_words_mode_in_reg_mode:str="NG-p"):
     
     self.__replace_before=replace_before
@@ -362,29 +392,30 @@ class ReplaceInformation:
   #例えば、「あいうえお」を「かきくけこ」に、「かきくけこ」を「さしすせそ」に置換する際
   #「あいうえお」を「かきくけこ」に置換した後、さらにその「かきくけこ」が「さしすせそ」に置換されてしまう。
   #このモードは置換を1度のみに抑え、「かきくけこ」の置換は、「あいうえお」から置換されたいものでなく、もともと「かきくけこ」だったところだけ置換するようにする
-  #一度置換したものがさらに置換されないようするには、ある言葉を置換するときは、「\n置換後の言葉\n」と余計に前後に改行コードをつけることとしている。(=前後の改行コードが、もともとその文字列だったのか置換されたものなのかの判別するためのもの)
-  #ただし、部分一致モードでは改行をつけようと、新しい言葉に代わってしまうので、前後の改行付きの置換後の言葉を第一引数のタプルの要素に入れることで、NGワードとして登録し、改行付きのものは置換されないようにする
-  def get_replace_obj_in_only_once_replace_mode(self,temp_ng_words:tuple=None):
-     escaped_after_replace=self.escaped_replace_after_pattern_in_only_once_replace_mode
+  #一度置換したものがさらに置換されないようするには、ある言葉を置換するときは、「\nか\nき\nく\nけ\nこ」というように各文字の間に余計に前後に改行コードをつけることとしている。(=この1文字ずつの改行コードが、もともとその文字列だったのか置換されたものなのかの判別するためのもの)
+  def get_replace_obj_in_only_once_replace_mode(self):
+     after_replaced_pattern_br_between_each_char="\n".join(self.__replace_after)
+     escaped_after_replace=f"\n{after_replaced_pattern_br_between_each_char}\n"
      if self.__replace_mode == "re":
        escaped_new_replaced_str=self.__class__.get_br_escaped_reg_exp_str(self.__replace_before)
        return Replacer(escaped_new_replaced_str,escaped_after_replace,self.__replace_mode,self.__is_ignore_case,tuple(self.__ng_words_list),self.__ng_words_mode_in_reg_mode)
      
      if self.__replace_mode == "wc":
        wildcard_reg_exp_str=Replacer.wildcard_to_reg_exp(self.__replace_before)
-       #ngワードがある場合は、貪欲マッチではなく最短マッチで置換するようにする
+       #ngワードがあり、なおかつ、.*(任意の文字列)で終わらない場合は、貪欲マッチではなく最短マッチで置換するようにする
        if len(self.__ng_words_list) != 0:
-         wildcard_reg_exp_str=re.sub("(?!<(\\\\))\\.\\*",".*?",wildcard_reg_exp_str)
+         if not wildcard_reg_exp_str.endswith(".*"): 
+           wildcard_reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",wildcard_reg_exp_str)
+         elif 1 < wildcard_reg_exp_str.count(".*"):
+           wildcard_reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",wildcard_reg_exp_str)
        
-       escaped_new_replaced_str=f"((?!<(\n)){wildcard_reg_exp_str}|{wildcard_reg_exp_str}(?!(\n)))"
+       print(wildcard_reg_exp_str)
+       escaped_new_replaced_str=f"((?<!(\n)){wildcard_reg_exp_str}|{wildcard_reg_exp_str}(?!(\n)))"
        return Replacer(escaped_new_replaced_str,escaped_after_replace,"re",self.__is_ignore_case,tuple(self.__ng_words_list),"NG-p")
        
      
      if self.__replace_mode == "p":
-       one_replace_ng_words=self.__ng_words_list[::]
-       if temp_ng_words is not None:
-          one_replace_ng_words.extend(list(temp_ng_words))
-       return Replacer(self.__replace_before,escaped_after_replace,self.__replace_mode,self.__is_ignore_case,tuple(one_replace_ng_words))
+       return Replacer(self.__replace_before,escaped_after_replace,self.__replace_mode,self.__is_ignore_case,tuple(self.__ng_words_list))
      
      return Replacer(self.__replace_before,escaped_after_replace,self.__replace_mode,self.__is_ignore_case)
        
@@ -445,10 +476,6 @@ class ReplaceInformation:
   @property
   def replace_after_pattern(self):
     return self.__replace_after
-  
-  @property
-  def escaped_replace_after_pattern_in_only_once_replace_mode(self):
-    return f"\n{self.__replace_after}\n"
   
    
 
