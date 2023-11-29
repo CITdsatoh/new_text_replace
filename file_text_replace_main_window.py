@@ -162,20 +162,13 @@ class FileTextReplaceMainWindow(tk.Tk):
     
     #同時置換(1度置換モード(以前置換したものを別のものに再置換しないようにするモード)では、置換を行うとき,置換された結果としてその文字列になったことを示すため
     #内部的に、「設定された置換後文字列の前後両方に、改行コードを入れたもの」に置換する。
-    #(これで、前後に改行コードがあるものは、元から存在した文字列でなく、置換した結果生じたものだとわかる)
-    #それでも、部分一致の場合、前後に改行コードがあろうがなかろうが、その語句に一致してしまうので、
-    #NGワードとして、ユーザーが指定したものとは別に「置換後文字列の前後に改行コードがついたもの」を指定することによって、
-    #「置換された結果の文字列」であるものは置換されなくなる
-    ng_words_tmp=[]
     
     for one_replace_information in self.__replacers_information:
-      #「置換後文字列の前後に改行コードがついた文字列」が置換されないように、NGワードとして、ユーザーが指定したものとは別にここで指定する
-      ng_words_tmp.append(one_replace_information.escaped_replace_after_pattern_in_only_once_replace_mode)
-      replace_obj=one_replace_information.get_replace_obj_in_only_once_replace_mode(tuple(ng_words_tmp))
+      replace_obj=one_replace_information.get_replace_obj_in_only_once_replace_mode()
       one_line_after_replaced=replace_obj.replace(one_line_after_replaced)
     
     #置換終了後、内部的に前後に改行コードを入れたので、改行コードを取り除く
-    one_line_after_replaced=re.sub("\n(.*)\n","\\1",one_line_after_replaced)
+    one_line_after_replaced=one_line_after_replaced.replace("\n","")
     
     return one_line_after_replaced
  
