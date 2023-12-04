@@ -168,7 +168,7 @@ class FileTextReplaceMainWindow(tk.Tk):
       one_line_after_replaced=replace_obj.replace(one_line_after_replaced)
     
     #置換終了後、内部的に前後に改行コードを入れたので、改行コードを取り除く
-    one_line_after_replaced=one_line_after_replaced.replace("\n","")
+    one_line_after_replaced=one_line_after_replaced.replace("\n","").replace("\a","")
     
     return one_line_after_replaced
  
