@@ -41,8 +41,75 @@ def flatten_list(flatten_before:tuple):
      flattened_list.append(one_elem)
    
    return flattened_list
-  
 
+#置換された言葉がさらに置換されないようにするため、置換された単語は各文字の間に、改行コードが入っている
+#例えば、「あいうえお」を「かきくけこ」に置換し、その後「かきくけこ」を「さしすせそ」に置換すると指定した場合、「あいうえお」も「かきくけこ」への置換を経て、
+#「さしすせそ」になってしまうので、置換された結果「かきくけこ」になったことを示すため、「\nか\nき\nく\nけ\nこ」に一時的になっている。
+#そうなっているかどうか調べる
+def judge_this_token_replaced(current_index:int,contents:str):
+  #今1番最初の文字か1番最後の文字なら、前後は調べようがないので、関数を出る
+  if current_index == 0:
+     return False
+  if current_index == len(contents) -1:
+     return False
+  if contents[current_index-1] != "\n":
+     return False 
+  if contents[current_index+1] != "\n" :
+     return False
+  
+  if current_index == 1:
+     return True
+  if contents[current_index-2] == "\a":
+     return False
+ 
+  return True
+
+
+
+def get_escaped_capture_para(before_str:str):
+
+  
+  escape_capture_head=""
+  escape_capture_foot=""
+  
+  #これらの文字列特に\nと\aはユーザーによるが入力できない文字列となっているので
+  #\aと\nが入っていれば、こちらで,再置換しないようエスケープされたものだとわかる
+  #たとえ、ユーザーが\aと\nを入力したとしても,\\aと\\nとみなされるので、\aと\nがあれば絶対にこのプログラムで入れたものだとわかる
+  escape_capture_first_part_head_normal="((?<=(\a\n))"
+  escape_capture_first_part_head_cap="^((?<=(\a\n))"
+  
+  escape_capture_second_part_head="(?<!(\n))"
+  
+  escape_capture_third_part_foot_normal="(?!(\n)))"
+  escape_capture_third_part_foot_dollar="(?!(\n)))$"
+  
+  #こちらで再置換しないようエスケープした文字列は、必ず\nと\aが入っているので、これら2つがなければユーザーが入力したものをそのまま使ったのだとわかる
+  #同時置換モードが有効でないときはわざわざ\aや\nを入れたエスケープはしないで、入力されたものをそのまま使う
+  #(\aや\nを使ったエスケープは、再置換されないよう、「置換されたこの文字列になったんだよ」ということを示すためにつけるものだから)
+  if escape_capture_first_part_head_normal not in before_str:
+    return re.sub("((?<!(\\\\))[\\(](?!(\\?)))(.*?)((?<!(\\\\))[\\)])","\\g<1>?:\\g<4>\\g<5>",before_str)
+ 
+  escape_capture_second_start_index=before_str.index(escape_capture_second_part_head)
+  escape_capture_first_part=before_str[0:escape_capture_second_start_index].rstrip("|")
+  escape_capture_body=""
+  if escape_capture_first_part.startswith(escape_capture_first_part_head_cap):
+    escape_capture_body=escape_capture_first_part[len(escape_capture_first_part_head_cap):]
+    escape_capture_head=escape_capture_first_part_head_cap
+  else:
+    escape_capture_body=escape_capture_first_part[len(escape_capture_first_part_head_normal):] 
+    escape_capture_head=escape_capture_first_part_head_normal
+  
+  escape_capture_body=re.sub("((?<!(\\\\))[\\(](?!(\\?)))(.*?)((?<!(\\\\))[\\)])","\\g<1>?:\\g<4>\\g<5>",escape_capture_body)
+  
+  if before_str.endswith(escape_capture_third_part_foot_dollar):
+    escape_capture_foot=escape_capture_third_part_foot_dollar
+  else:
+    escape_capture_foot=escape_capture_third_part_foot_normal
+  
+  return  f"{escape_capture_head}{escape_capture_body}|{escape_capture_second_part_head}{escape_capture_body}|{escape_capture_body}{escape_capture_foot}"
+     
+       
+       
 #これは実際に指定された条件通りに置換を行うクラス 
 class Replacer:
 
@@ -92,12 +159,12 @@ class Replacer:
       reg_exp_str=self.__class__.wildcard_to_reg_exp(self.__before_str)
       
       after_replaced_contents=contents
-      if not reg_exp_str.endswith(".*"):
+      #if not reg_exp_str.endswith(".*"):
         #ワイルドカードが「*」だったとき、「.*」という貪欲マッチに変換されるので末尾に「*」があったとき、つまり前方一致の時以外は、ここでは貪欲マッチではなく最短マッチにする
-        reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",reg_exp_str)
+        #reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",reg_exp_str)
       #ただし、「.*」で終わった場合、最後以外は最短マッチに直す
-      elif 1 <  reg_exp_str.count(".*"):
-        reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",reg_exp_str)
+      #elif 1 <  reg_exp_str.count(".*"):
+        #reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",reg_exp_str)
       
       reg_match_words_include_empty=flatten_list(tuple(re.findall(reg_exp_str,after_replaced_contents)))
       if self.__is_ignore_case:
@@ -106,6 +173,7 @@ class Replacer:
       for one_reg_match_word in reg_match_words:
         if self.any_one_ng_word_match_expr(one_reg_match_word):
           continue
+        one_reg_match_word=re.sub("([\\(\\)\\|\\+\\?\\*\\-\\[\\]\\{\\}\\^\\$\\.\\\\])","\\\\\\g<1>",one_reg_match_word)
         replace_reg_exp_str=ReplaceInformation.get_br_escaped_reg_exp_str(one_reg_match_word)
         after_replaced_contents=re.sub(replace_reg_exp_str,self.__after_str,after_replaced_contents)
         
@@ -116,6 +184,7 @@ class Replacer:
      if self.__replace_mode == "re":
        
        after_replaced_contents=contents
+       
        
        #^で始まったときは、指定した言葉のうち冒頭に存在するものだけを置換するようにするため別処理にする
        if self.__before_str.startswith("^"):
@@ -147,42 +216,38 @@ class Replacer:
             return re.sub(self.__before_str,self.__after_str,contents,flags=re.IGNORECASE)
          return re.sub(self.__before_str,self.__after_str,contents)
        
-       reg_match_words_include_empty=flatten_list(re.findall(self.__before_str,contents))
+     
+         
+       #()がついているものはre.findallで見つけるとき,()内の言葉がキャプチャされてしまうので、それをさけるため
+       #例えば、"(deep|shallow)?copy"に当てはまる「deepcopy」、「shallowcopy」あるいは「copy」という文字列を探し出して何らかの言葉にそれぞれ置換したいのに、
+       #このまま、re.findall関数を使って切り出すと、「deep」と「shallow」のみが取り出されて、「deepcopy」,「shallowcopy」,「copy」という文字列ではなく、「deep」と「shallow」という文字列が置換されてしまう
+       #なので、ここでは、(文字列)を(?:文字列)に変える (deep|shallow)?copy→(?:deep|shallow)?copyにする 
+       #なぜ、re.findall関数を先に使うのかというと、NGワード対応(=表現に当てはまるけど置換から除外するものが指定されるかもしれないから)
+       #ゆえに一気にre.subで置換するのではなく、「1.re.findallで当てはまるものを抽出」→「2.NGワードに当てはまらないか確認」→「3.当てはまらないことが確認出来たら、それをre.subで一個ずつ置換対象とする。」と順を踏む
+       escape_capture_para_before_str=get_escaped_capture_para(self.__before_str)
+       
+       
+       
+       reg_match_words_include_empty=flatten_list(re.findall(escape_capture_para_before_str,contents))
        if self.__is_ignore_case:
-         reg_match_words_include_empty=flatten_list(re.findall(self.__before_str,contents,re.IGNORECASE))
+         reg_match_words_include_empty=flatten_list(re.findall(escape_capture_para_before_str,contents,re.IGNORECASE))
        
        reg_match_words=[one_exp for one_exp in reg_match_words_include_empty if len(one_exp) != 0]
-       #print(reg_match_words)
-       #print(self.__before_str)
        for one_reg_match_word in reg_match_words:
          if self.any_ng_word_match_expr_in_each_mode(one_reg_match_word):
             continue
+         #正規表現が、エスケープの時に入れた「\a\n」あるいは「\a\n」自体に一致することもあるのでそれも除外
+         if one_reg_match_word in ("\a\n","\n\a"):
+            continue
          
-         print(one_reg_match_word)
          one_reg_match_word=re.sub("([\\(\\)\\|\\+\\?\\*\\-\\[\\]\\{\\}\\^\\$\\.\\\\])","\\\\\\g<1>",one_reg_match_word)
          replace_reg_exp_str=ReplaceInformation.get_br_escaped_reg_exp_str(one_reg_match_word)
-         print(repr(replace_reg_exp_str))
          after_replaced_contents=re.sub(replace_reg_exp_str,self.__after_str,after_replaced_contents)
        
+ 
        return after_replaced_contents
      
      
-     #置換された言葉がさらに置換されないようにするため、置換された単語は各文字の間に、改行コードが入っている
-     #例えば、「あいうえお」を「かきくけこ」に置換し、その後「かきくけこ」を「さしすせそ」に置換すると指定した場合、「あいうえお」も「かきくけこ」への置換を経て、
-     #「さしすせそ」になってしまうので、置換された結果「かきくけこ」になったことを示すため、「\nか\nき\nく\nけ\nこ」に一時的になっている。
-     #そうなっているかどうか調べるローカル関数
-     def judge_this_token_replaced(current_index,contents):
-       #今1番最初の文字か1番最後の文字なら、前後は調べようがないので、関数を出る
-       if current_index == 0:
-         return False
-       if current_index == len(contents) -1:
-         return False
-       if contents[current_index-1] != "\n":
-         return False 
-       if contents[current_index+1] != "\n":
-         return False
-       
-       return True
        
      
      #通常置換(部分一致置換)
@@ -218,8 +283,6 @@ class Replacer:
        for one_ng_word in self.__ng_words_list:
           if self.__is_ignore_case:
            if self.__before_str.lower() not in one_ng_word.lower():
-               #print(self.__before_str.lower())
-               ##print(one_ng_word.lower())
                continue
              
            #ngワードが始まるインデックスを求める
@@ -296,17 +359,17 @@ class Replacer:
   @classmethod
   def wildcard_to_reg_exp(cls,wc_str:str):
     #ワイルドカードから正規表現へ変換する際,エスケープが必要な文字(*は.*に,?は.に変換、[]はワイルドカードの時と意味が変わらないのでそのままでよい)
-    anytime_escape_need_chars=("\\","^","$",".","+","(",")","{","}","|","（",")")
+    anytime_escape_need_chars=("\\","^","$",".","+","(",")","{","}","|","（",")","-")
     
     #正規表現に変換後(=変換時は1文字ずつ調べるため,ここでは変換結果をいったん、文字の配列としておいておく)
     reg_exp_chars=[]
     
     #[]の内側かどうか(=>[]の内側の時は,*,?,[は文字列として扱われるのでエスケープ処理が必要。そのことを見抜くためフラグを作る)
-    #逆に-と]は[]の外側の時のみエスケープ処理を行う
+    #逆に]は[]の外側の時のみエスケープ処理を行う
     is_inside_square_para=False
     
     inside_square_only_escape_chars=["*","?","["]
-    outside_square_only_escape_chars=["-","]"]
+    outside_square_only_escape_chars=["]"]
     
     i=0
     
@@ -392,10 +455,14 @@ class ReplaceInformation:
   #例えば、「あいうえお」を「かきくけこ」に、「かきくけこ」を「さしすせそ」に置換する際
   #「あいうえお」を「かきくけこ」に置換した後、さらにその「かきくけこ」が「さしすせそ」に置換されてしまう。
   #このモードは置換を1度のみに抑え、「かきくけこ」の置換は、「あいうえお」から置換されたいものでなく、もともと「かきくけこ」だったところだけ置換するようにする
-  #一度置換したものがさらに置換されないようするには、ある言葉を置換するときは、「\nか\nき\nく\nけ\nこ」というように各文字の間に余計に前後に改行コードをつけることとしている。(=この1文字ずつの改行コードが、もともとその文字列だったのか置換されたものなのかの判別するためのもの)
+  #一度置換したものがさらに置換されないようするには、ある言葉を置換するときは、「\nか\nき\nく\nけ\nこ\a\n」というように各文字の間に余計に前後に改行コードをつけることとしている。(=この1文字ずつの改行コードが、もともとその文字列だったのか置換されたものなのかの判別するためのもの)
+  #なお、置換された部分が終わりであることを示すために最後の改行の前に「\a」を入れる。(これは、どっちが終わりかはじめかを見抜くために必要)
+  #例えば、1行が、「あいうえおかきくけこ」で、「あいう」を「えおか」に、「おかき」を「きくけ」に、「え」を「あ」に置換した場合、終わりの\aがないと、
+  #「おかき」を「きくけ」に置換し終わった時点で、「\nえ¥nお\nか"\nえ\n"き\nく\nけ\nくけこ」となり、「え」の両隣に改行コードが入っており、この「え」は置換された結果そうなったんだとみなされてしまう。
+  #ゆえに、終わりに余計に\aを入れておくことで,このように、置換されたところと置換されたところが挟まれている場合でも置換できるようにする。
   def get_replace_obj_in_only_once_replace_mode(self):
      after_replaced_pattern_br_between_each_char="\n".join(self.__replace_after)
-     escaped_after_replace=f"\n{after_replaced_pattern_br_between_each_char}\n"
+     escaped_after_replace=f"\n{after_replaced_pattern_br_between_each_char}\n\a\n"
      if self.__replace_mode == "re":
        escaped_new_replaced_str=self.__class__.get_br_escaped_reg_exp_str(self.__replace_before)
        return Replacer(escaped_new_replaced_str,escaped_after_replace,self.__replace_mode,self.__is_ignore_case,tuple(self.__ng_words_list),self.__ng_words_mode_in_reg_mode)
@@ -404,13 +471,12 @@ class ReplaceInformation:
        wildcard_reg_exp_str=Replacer.wildcard_to_reg_exp(self.__replace_before)
        #ngワードがあり、なおかつ、.*(任意の文字列)で終わらない場合は、貪欲マッチではなく最短マッチで置換するようにする
        if len(self.__ng_words_list) != 0:
-         if not wildcard_reg_exp_str.endswith(".*"): 
-           wildcard_reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",wildcard_reg_exp_str)
-         elif 1 < wildcard_reg_exp_str.count(".*"):
-           wildcard_reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",wildcard_reg_exp_str)
+        if not wildcard_reg_exp_str.endswith(".*"): 
+          wildcard_reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",wildcard_reg_exp_str)
+        elif 1 < wildcard_reg_exp_str.count(".*"):
+          wildcard_reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",wildcard_reg_exp_str)
        
-       print(wildcard_reg_exp_str)
-       escaped_new_replaced_str=f"((?<!(\n)){wildcard_reg_exp_str}|{wildcard_reg_exp_str}(?!(\n)))"
+       escaped_new_replaced_str=f"((?<=(\a\n)){wildcard_reg_exp_str}|(?<!(\n)){wildcard_reg_exp_str}|{wildcard_reg_exp_str}(?!(\n)))"
        return Replacer(escaped_new_replaced_str,escaped_after_replace,"re",self.__is_ignore_case,tuple(self.__ng_words_list),"NG-p")
        
      
@@ -459,15 +525,34 @@ class ReplaceInformation:
       start_cap_removed_str=replace_before.lstrip("^")
       if replace_before.endswith("$"):
         start_cap_end_dollar_removed_str=start_cap_removed_str.rstrip("$")
-        return f"^((?<!(\n)){start_cap_end_dollar_removed_str}|{start_cap_end_dollar_removed_str}(?!(\n)))$"
-      return f"^((?<!(\n)){start_cap_removed_str}|{start_cap_removed_str}(?!(\n)))"
+        return f"^({cls.get_br_escaped_reg_exp_str_first_part(start_cap_end_dollar_removed_str)}|{cls.get_br_escaped_reg_exp_str_second_part(start_cap_end_dollar_removed_str)}|{cls.get_br_escaped_reg_exp_str_third_part(start_cap_end_dollar_removed_str)})$"
+        #return f"^((?<!(\n)){start_cap_end_dollar_removed_str}|{start_cap_end_dollar_removed_str}(?!(\n)))$"
+      #return f"^((?<!(\n)){start_cap_removed_str}|{start_cap_removed_str}(?!(\n)))"
+      return f"^({cls.get_br_escaped_reg_exp_str_first_part(start_cap_removed_str)}|{cls.get_br_escaped_reg_exp_str_second_part(start_cap_removed_str)}|{cls.get_br_escaped_reg_exp_str_third_part(start_cap_removed_str)})"
     if replace_before.endswith("$"):
       end_dollar_mark_removed_str=replace_before.rstrip("$")
-      return f"((?<!(\n)){end_dollar_mark_removed_str}|{end_dollar_mark_removed_str}(?!(\n)))$"
+      #return f"((?<!(\n)){end_dollar_mark_removed_str}|{end_dollar_mark_removed_str}(?!(\n)))$"
+      return f"({cls.get_br_escaped_reg_exp_str_first_part(end_dollar_mark_removed_str)}|{cls.get_br_escaped_reg_exp_str_second_part(end_dollar_mark_removed_str)}|{cls.get_br_escaped_reg_exp_str_third_part(end_dollar_mark_removed_str)})$"
        
-    return f"((?<!(\n)){replace_before}|{replace_before}(?!(\n)))"
+    #return f"((?<!(\n)){replace_before}|{replace_before}(?!(\n)))"
+    return f"({cls.get_br_escaped_reg_exp_str_first_part(replace_before)}|{cls.get_br_escaped_reg_exp_str_second_part(replace_before)}|{cls.get_br_escaped_reg_exp_str_third_part(replace_before)})"
          
   
+  #改行が前にあるけど、そのひとつ前に\aマークがあるなら改行してよいという条件
+  @classmethod
+  def get_br_escaped_reg_exp_str_first_part(cls,replace_before:str):
+    return f"(?<=(\a\n)){replace_before}"
+  
+  #改行コードがその置換したい文字の前にあるものは、そこは置換された結果そうなったということを示しているので、置換しない
+  @classmethod
+  def get_br_escaped_reg_exp_str_second_part(cls,replace_before:str):
+    return f"(?<!(\n)){replace_before}"
+  
+  #上記にて改行コードが前にあるものだけを置換の除外とした場合であっても、このままでは後ろにあってもなくてもは置換されてしまうので
+  #改行が後ろにあるものは置換しない(置換された結果そうなったものはその文字前後に改行コードがある)
+  @classmethod
+  def get_br_escaped_reg_exp_str_third_part(cls,replace_before:str):
+    return f"{replace_before}(?!(\n))"
   
   @property
   def replace_before_pattern(self):
