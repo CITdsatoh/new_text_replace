@@ -203,7 +203,8 @@ class Replacer:
          return re.sub(self.__before_str,self.__after_str,contents)
        
        #$で終わったときは、指定した言葉のうち末尾に存在するものだけを置換するようにするため別処理にする
-       if self.__before_str.endswith("$"):
+       #ただし文字列自体は$で終わっていたとしても、エスケープされた\$で終わっていた場合は、除外しなければならない
+       if self.__before_str.endswith("$") and not self.__before_str.endswith("\\$"):
          for one_ng_word in self.__ng_words_list:
             #ただし、末尾に存在するものを置換するといっても、今の置換先文字列で終わる指定したNGワードが末尾に存在したら、置換を避ける
             if contents.endswith(one_ng_word):
@@ -523,13 +524,14 @@ class ReplaceInformation:
   def get_br_escaped_reg_exp_str(cls,replace_before:str):
     if replace_before.startswith("^"):
       start_cap_removed_str=replace_before.lstrip("^")
-      if replace_before.endswith("$"):
+      if replace_before.endswith("$") and not replace_before.endswith("\\$"):
         start_cap_end_dollar_removed_str=start_cap_removed_str.rstrip("$")
         return f"^({cls.get_br_escaped_reg_exp_str_first_part(start_cap_end_dollar_removed_str)}|{cls.get_br_escaped_reg_exp_str_second_part(start_cap_end_dollar_removed_str)}|{cls.get_br_escaped_reg_exp_str_third_part(start_cap_end_dollar_removed_str)})$"
         #return f"^((?<!(\n)){start_cap_end_dollar_removed_str}|{start_cap_end_dollar_removed_str}(?!(\n)))$"
       #return f"^((?<!(\n)){start_cap_removed_str}|{start_cap_removed_str}(?!(\n)))"
       return f"^({cls.get_br_escaped_reg_exp_str_first_part(start_cap_removed_str)}|{cls.get_br_escaped_reg_exp_str_second_part(start_cap_removed_str)}|{cls.get_br_escaped_reg_exp_str_third_part(start_cap_removed_str)})"
-    if replace_before.endswith("$"):
+    #エスケープされた$の時(\$)は除外する
+    if replace_before.endswith("$") and not replace_before.endswith("\\$"):
       end_dollar_mark_removed_str=replace_before.rstrip("$")
       #return f"((?<!(\n)){end_dollar_mark_removed_str}|{end_dollar_mark_removed_str}(?!(\n)))$"
       return f"({cls.get_br_escaped_reg_exp_str_first_part(end_dollar_mark_removed_str)}|{cls.get_br_escaped_reg_exp_str_second_part(end_dollar_mark_removed_str)}|{cls.get_br_escaped_reg_exp_str_third_part(end_dollar_mark_removed_str)})$"
