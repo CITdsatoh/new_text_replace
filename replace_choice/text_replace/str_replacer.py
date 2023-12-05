@@ -159,16 +159,17 @@ class Replacer:
       reg_exp_str=self.__class__.wildcard_to_reg_exp(self.__before_str)
       
       after_replaced_contents=contents
-      #if not reg_exp_str.endswith(".*"):
-        #ワイルドカードが「*」だったとき、「.*」という貪欲マッチに変換されるので末尾に「*」があったとき、つまり前方一致の時以外は、ここでは貪欲マッチではなく最短マッチにする
-        #reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",reg_exp_str)
-      #ただし、「.*」で終わった場合、最後以外は最短マッチに直す
-      #elif 1 <  reg_exp_str.count(".*"):
-        #reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",reg_exp_str)
+      if len(self.__ng_words_list) != 0:
+        if not reg_exp_str.endswith(".*"):
+          #ワイルドカードが「*」だったとき、「.*」という貪欲マッチに変換されるので末尾に「*」があったとき、つまり前方一致の時以外は、ここでは貪欲マッチではなく最短マッチにする
+          reg_exp_str=re.sub("(?<!(\\\\))\\.\\*",".*?",reg_exp_str)
+        #ただし、「.*」で終わった場合、最後以外は最短マッチに直す
+        elif 1 <  reg_exp_str.count(".*"):
+          reg_exp_str=re.sub("(?<!(\\\\))\\.\\*(.)",".*?\\g<2>",reg_exp_str)
       
-      reg_match_words_include_empty=flatten_list(tuple(re.findall(reg_exp_str,after_replaced_contents)))
+      reg_match_words_include_empty=flatten_list(tuple(re.findall(get_escaped_capture_para(reg_exp_str),after_replaced_contents)))
       if self.__is_ignore_case:
-        reg_match_words_include_empty=flatten_list(tuple(re.findall(reg_exp_str,after_replaced_contents,re.IGNORECASE)))
+        reg_match_words_include_empty=flatten_list(tuple(re.findall(get_escaped_capture_para(reg_exp_str),after_replaced_contents,re.IGNORECASE)))
       reg_match_words=[one_exp for one_exp in reg_match_words_include_empty if len(one_exp) != 0]
       for one_reg_match_word in reg_match_words:
         if self.any_one_ng_word_match_expr(one_reg_match_word):
@@ -244,7 +245,6 @@ class Replacer:
          replace_reg_exp_str=ReplaceInformation.get_br_escaped_reg_exp_str(one_reg_match_word)
          after_replaced_contents=re.sub(replace_reg_exp_str,self.__after_str,after_replaced_contents)
        
- 
        return after_replaced_contents
      
      
