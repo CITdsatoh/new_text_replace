@@ -397,7 +397,7 @@ class Replacer:
          reg_exp_chars.append(wc_str[i])
          is_inside_square_para=True
          #四角かっこのすぐ次の文字がエクスクラメーションマークなら、これは否定クラスを表すので,正規表現の否定クラスである^を入れる
-         if wc_str[i+1] == "!":
+         if i < len(wc_str)-1 and wc_str[i+1] == "!":
            reg_exp_chars.append("^")
            i += 2
            continue
